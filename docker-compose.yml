@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  secretario_app:
+    build: 
+      context: ./dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "5174:5173" # Usando porta 5174 para não dar conflito com o outro projeto
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    restart: unless-stopped
