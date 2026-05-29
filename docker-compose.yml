@@ -6,10 +6,29 @@ services:
       context: ./dashboard
       dockerfile: Dockerfile
     ports:
-      - "5174:5173" # Usando porta 5174 para não dar conflito com o outro projeto
+      - "5174:5173"
     volumes:
       - ./dashboard:/app
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - VITE_API_URL=https://n8n.sandlj.com.br
     restart: unless-stopped
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: admin_ala
+      POSTGRES_PASSWORD: senha_segura_ala
+      POSTGRES_DB: secretario_db
+    ports:
+      - "5433:5432" # Usando porta 5433 para não dar conflito com o banco antigo
+    volumes:
+      - secretario_db_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  secretario_db_data:
