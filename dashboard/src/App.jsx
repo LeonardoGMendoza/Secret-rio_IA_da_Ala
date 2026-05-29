@@ -68,6 +68,10 @@ function LoginScreen({ onLogin }) {
       onLogin({ nome: 'Secretário', role: 'secretario' });
     } else if (usuario === 'bispo' && senha === 'bispo123') {
       onLogin({ nome: 'Bispo', role: 'bispado' });
+    } else if (usuario === '1conselheiro' && senha === 'cons123') {
+      onLogin({ nome: '1º Conselheiro', role: 'bispado' });
+    } else if (usuario === '2conselheiro' && senha === 'cons123') {
+      onLogin({ nome: '2º Conselheiro', role: 'bispado' });
     } else {
       setErro(true);
     }
@@ -213,15 +217,50 @@ function AgendaBispado({ role }) {
 }
 
 function Entrevistas({ role }) {
+  const [showForm, setShowForm] = useState(false);
+  const [data, setData] = useState('');
+  const [hora, setHora] = useState('');
+  const [membro, setMembro] = useState('');
+  const [lider, setLider] = useState('Bispo');
+
+  const handleAdd = (e) => {
+    e.preventDefault();
+    alert('Agendamento salvo no banco de dados! (Em breve)');
+    setShowForm(false);
+  };
+
   return (
     <div className="animate-fade-in glass-panel" style={{padding: 24, borderRadius: 12}}>
-      <h2>🗓️ Controle de Entrevistas</h2>
-      <p>Lista de entrevistas agendadas pela IA ou pelo secretário.</p>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+        <h2>🗓️ Controle de Entrevistas</h2>
+        <button onClick={() => setShowForm(!showForm)} style={{padding: '8px 15px', background: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer'}}>
+          + Novo Agendamento
+        </button>
+      </div>
+      <p>Lista de entrevistas agendadas pela IA ou manualmente pelo secretário.</p>
+      
+      {showForm && (
+        <form onSubmit={handleAdd} style={{display: 'flex', gap: 15, marginBottom: 20, background: 'rgba(0,0,0,0.2)', padding: 15, borderRadius: 8, flexWrap: 'wrap'}}>
+          <div style={{flex: '1 1 200px'}}><label>Membro</label><input type="text" value={membro} onChange={e=>setMembro(e.target.value)} required style={{width: '100%', padding: 8}}/></div>
+          <div style={{flex: '1 1 150px'}}><label>Líder</label>
+            <select value={lider} onChange={e=>setLider(e.target.value)} style={{width: '100%', padding: 8}}>
+              <option value="Bispo">Bispo</option>
+              <option value="1_conselheiro">1º Conselheiro</option>
+              <option value="2_conselheiro">2º Conselheiro</option>
+            </select>
+          </div>
+          <div style={{flex: '1 1 150px'}}><label>Data</label><input type="date" value={data} onChange={e=>setData(e.target.value)} required style={{width: '100%', padding: 8}}/></div>
+          <div style={{flex: '1 1 100px'}}><label>Hora</label><input type="time" value={hora} onChange={e=>setHora(e.target.value)} required style={{width: '100%', padding: 8}}/></div>
+          <div style={{display: 'flex', alignItems: 'flex-end'}}><button type="submit" style={{padding: '10px 20px', background: 'var(--success)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer'}}>Salvar</button></div>
+        </form>
+      )}
+
       <table style={{width: '100%', textAlign: 'left', borderCollapse: 'collapse', marginTop: 15}}>
         <thead>
           <tr style={{borderBottom: '1px solid rgba(255,255,255,0.2)'}}>
             <th style={{padding: 10}}>Membro</th>
             <th style={{padding: 10}}>Assunto</th>
+            <th style={{padding: 10}}>Líder</th>
             <th style={{padding: 10}}>Data/Hora</th>
             <th style={{padding: 10}}>Status</th>
           </tr>
@@ -231,6 +270,7 @@ function Entrevistas({ role }) {
             <tr key={e.id} style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
               <td style={{padding: 10}}><strong>{e.membro}</strong></td>
               <td style={{padding: 10}}>{e.assunto}</td>
+              <td style={{padding: 10}}>Bispo</td>
               <td style={{padding: 10}}>{e.data} às {e.hora}</td>
               <td style={{padding: 10}}><span style={{background: 'var(--accent-primary)', padding: '4px 8px', borderRadius: 4, fontSize: '0.8rem'}}>{e.status}</span></td>
             </tr>
@@ -242,17 +282,28 @@ function Entrevistas({ role }) {
 }
 
 function MembrosList() {
+  const dispararMensagem = (membroNome) => {
+    alert(`Mensagem enviada para ${membroNome}!\n\n"Cuidado, recomendação vencendo... Precisamos agendar entrevista e estar prontos para poder entrar na casa do nosso Pai. Não vai ser igual as 5 virgens imprudentes..."`);
+  };
+
   return (
     <div className="animate-fade-in glass-panel" style={{padding: 24, borderRadius: 12}}>
       <h2>👥 Membros & Recomendações</h2>
       <p>O robô monitora essa tabela e enviará um WhatsApp para quem tiver a recomendação vencendo em 30 dias.</p>
+      
+      <div style={{display: 'flex', gap: 10, marginBottom: 15}}>
+        <button style={{padding: '8px 15px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 6, cursor: 'pointer'}}>
+          + Adicionar Membro Manualmente
+        </button>
+      </div>
+
       <table style={{width: '100%', textAlign: 'left', borderCollapse: 'collapse', marginTop: 15}}>
         <thead>
           <tr style={{borderBottom: '1px solid rgba(255,255,255,0.2)'}}>
             <th style={{padding: 10}}>Membro</th>
             <th style={{padding: 10}}>WhatsApp</th>
             <th style={{padding: 10}}>Vencimento Rec.</th>
-            <th style={{padding: 10}}>Status</th>
+            <th style={{padding: 10}}>Ações Manuais</th>
           </tr>
         </thead>
         <tbody>
@@ -261,7 +312,14 @@ function MembrosList() {
               <td style={{padding: 10}}><strong>{m.nome}</strong></td>
               <td style={{padding: 10}}>{m.telefone}</td>
               <td style={{padding: 10, color: m.recomendacao.includes('2026-06') ? 'var(--warning)' : 'white'}}>{m.recomendacao}</td>
-              <td style={{padding: 10}}>{m.status}</td>
+              <td style={{padding: 10, display: 'flex', gap: 5}}>
+                <button style={{padding: '5px 10px', background: 'transparent', color: '#aaa', border: '1px solid #555', borderRadius: 4, cursor: 'pointer'}}>Editar</button>
+                {m.recomendacao.includes('2026-06') && (
+                  <button onClick={() => dispararMensagem(m.nome)} style={{padding: '5px 10px', background: '#25D366', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer'}}>
+                    Avisar no Zap
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
