@@ -1,0 +1,79 @@
+{
+  "name": "Secretário IA da Ala - Fluxo Base",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook/zapi-receber-mensagem",
+        "options": {}
+      },
+      "name": "Webhook Z-API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "secretario-ia-webhook-id"
+    },
+    {
+      "parameters": {
+        "model": "llama3-70b-8192",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Você é o Assistente IA do Secretário da Ala. Sua função é classificar a intenção da mensagem abaixo em: TAREFA, ATA ou LEMBRETE, e extrair os dados principais. Mensagem: {{$json.body.message.text}}"
+            }
+          ]
+        }
+      },
+      "name": "Groq IA (Classificação)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO tarefas (descricao) VALUES ($1);",
+        "additionalFields": {
+          "queryParams": "={{ $json.output }}"
+        }
+      },
+      "name": "PostgreSQL (Salvar Tarefa)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Z-API": {
+      "main": [
+        [
+          {
+            "node": "Groq IA (Classificação)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq IA (Classificação)": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL (Salvar Tarefa)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

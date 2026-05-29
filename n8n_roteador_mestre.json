@@ -1,0 +1,113 @@
+{
+  "name": "Roteador Mestre (Enfermeira + Secretário)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook/enfermeira-whatsapp",
+        "options": {}
+      },
+      "name": "Webhook Z-API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "enfermeira-whatsapp-id"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.body.text || $json.body.message.text }}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "contains",
+              "value2": "ala",
+              "output": 1
+            },
+            {
+              "operation": "contains",
+              "value2": "bispo",
+              "output": 1
+            },
+            {
+              "operation": "contains",
+              "value2": "secretário",
+              "output": 1
+            },
+            {
+              "operation": "contains",
+              "value2": "secretario",
+              "output": 1
+            }
+          ]
+        },
+        "fallbackOutput": 0
+      },
+      "name": "Roteador Inteligente",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Filtra palavras-chave do Secretário"
+    },
+    {
+      "parameters": {},
+      "name": "Fluxo da Enfermeira (Cole seus nós aqui)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "COLOQUE_O_ID_DO_FLUXO_DO_SECRETARIO_AQUI"
+      },
+      "name": "Executar Fluxo do Secretário",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        700,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Z-API": {
+      "main": [
+        [
+          {
+            "node": "Roteador Inteligente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador Inteligente": {
+      "main": [
+        [
+          {
+            "node": "Fluxo da Enfermeira (Cole seus nós aqui)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Executar Fluxo do Secretário",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

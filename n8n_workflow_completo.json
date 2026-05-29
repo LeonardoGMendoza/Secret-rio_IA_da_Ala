@@ -1,0 +1,235 @@
+{
+  "name": "Secretário IA da Ala - Fluxo Completo (Z-API + Groq + Postgres)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook/zapi-receber-mensagem",
+        "options": {}
+      },
+      "name": "Webhook Z-API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ],
+      "webhookId": "secretario-ia-webhook-id"
+    },
+    {
+      "parameters": {
+        "model": "llama3-70b-8192",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Você é o Assistente IA do Secretário da Ala.\n\nAnalise a seguinte mensagem recebida e classifique-a em UMA das seguintes intenções:\n1. 'TAREFA': Se for algo para anotar ou lembrar.\n2. 'AVISO_BISPO': Se for uma mensagem que deve ser repassada ou avisada ao Bispo.\n3. 'AVISO_GRUPO': Se for um recado geral para mandar no grupo da Ala.\n4. 'OUTROS': Se não se encaixar em nenhuma acima.\n\nVocê deve retornar EXATAMENTE um JSON neste formato, sem nenhum outro texto:\n{\n  \"intencao\": \"TAREFA ou AVISO_BISPO ou AVISO_GRUPO\",\n  \"texto_extraido\": \"O texto limpo e direto da tarefa ou do aviso que deve ser salvo ou enviado\"\n}\n\nMensagem recebida:\n{{ $json.body.text || $json.body.message.text }}"
+            }
+          ]
+        }
+      },
+      "name": "Groq IA (Classificação)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Parse JSON",
+      "type": "n8n-nodes-base.jsonParse",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Converte a resposta da IA em JSON"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.intencao }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "TAREFA",
+              "output": 0
+            },
+            {
+              "value2": "AVISO_BISPO",
+              "output": 1
+            },
+            {
+              "value2": "AVISO_GRUPO",
+              "output": 2
+            }
+          ]
+        },
+        "fallbackOutput": 3
+      },
+      "name": "Roteador (Switch)",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO tarefas (descricao, status) VALUES ($1, 'pendente');",
+        "additionalFields": {
+          "queryParams": "={{ $json.texto_extraido }}"
+        }
+      },
+      "name": "Postgres (Salvar Tarefa)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/SUA_INSTANCIA/token/SEU_TOKEN/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "SEU_CLIENT_TOKEN_ZAPI"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "5511999999999"
+            },
+            {
+              "name": "message",
+              "value": "=Olá Bispo! Mensagem do assistente do secretário:\n\n{{ $json.texto_extraido }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Z-API (Avisar Bispo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1000,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Coloque o número do Bispo aqui"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/SUA_INSTANCIA/token/SEU_TOKEN/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "SEU_CLIENT_TOKEN_ZAPI"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "120363000000000000-group"
+            },
+            {
+              "name": "message",
+              "value": "=*Aviso da Secretaria da Ala:*\n\n{{ $json.texto_extraido }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Z-API (Grupo da Ala)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1000,
+        500
+      ],
+      "notesInFlow": true,
+      "notes": "Coloque o ID do grupo aqui"
+    }
+  ],
+  "connections": {
+    "Webhook Z-API": {
+      "main": [
+        [
+          {
+            "node": "Groq IA (Classificação)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq IA (Classificação)": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON": {
+      "main": [
+        [
+          {
+            "node": "Roteador (Switch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador (Switch)": {
+      "main": [
+        [
+          {
+            "node": "Postgres (Salvar Tarefa)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Z-API (Avisar Bispo)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Z-API (Grupo da Ala)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
