@@ -1,61 +1,63 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './index.css';
 
-// Configurações e Mock Temporário
-const CONFIG = {
-  N8N_BASE: 'https://n8n.sandlj.com.br'
+const N8N = 'https://n8n.sandlj.com.br/webhook';
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+const api = {
+  get: (path) => fetch(`${N8N}${path}`).then(r => r.json()).catch(() => []),
+  post: (path, body) => fetch(`${N8N}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(r => r.json()).catch(() => ({}))
 };
 
-const MOCK_ENTREVISTAS = [
-  { id: 1, membro: 'João Santos', data: '2026-06-01', hora: '19:00', assunto: 'Renovação de Recomendação', status: 'agendada' },
-  { id: 2, membro: 'Família Souza', data: '2026-06-01', hora: '19:30', assunto: 'Aconselhamento', status: 'agendada' },
-];
-
-const MOCK_AGENDA_BISPADO = [
-  { id: 1, data: '2026-06-01', inicio: '19:00', fim: '21:00', lider: 'Bispo' },
-  { id: 2, data: '2026-06-05', inicio: '18:00', fim: '20:00', lider: '1º Conselheiro' },
-];
-
-const MOCK_MEMBROS = [
-  { id: 1, nome: 'Maria Silva', telefone: '(11) 99999-1111', recomendacao: '2026-06-25', status: 'ativo' },
-  { id: 2, nome: 'Carlos Oliveira', telefone: '(11) 99999-2222', recomendacao: '2027-01-10', status: 'ativo' },
-];
-
+// ─── App Root ────────────────────────────────────────────────────────────────
 function App() {
-  const [user, setUser] = useState(null); // { nome, role }
+  const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  if (!user) {
-    return <LoginScreen onLogin={(u) => setUser(u)} />;
-  }
+  if (!user) return <LoginScreen onLogin={setUser} />;
 
   return (
     <div className="app-container">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} role={user.role} />
-      
       <main className="main-content">
         <header className="topbar glass-panel">
           <div>
-            <h1 className="page-title">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
-            <p className="page-subtitle">Bem-vindo de volta, {user.nome}.</p>
+            <h1 className="page-title">
+              {{ dashboard: 'Visão Geral', entrevistas: 'Entrevistas', agenda: 'Agenda do Bispado', membros: 'Membros & Recomendações', mensagens: 'Avisos da IA' }[activeTab]}
+            </h1>
+            <p className="page-subtitle">Bem-vindo, {user.nome} — Sistema Secretário IA da Ala</p>
           </div>
           <div className="user-profile">
             <div className="avatar">{user.nome.charAt(0)}</div>
             <button className="btn-logout" onClick={() => setUser(null)}>Sair</button>
           </div>
         </header>
-
         <div className="content-grid">
-          {activeTab === 'dashboard' && <Dashboard role={user.role} />}
-          {activeTab === 'entrevistas' && <Entrevistas role={user.role} />}
-          {activeTab === 'agenda' && <AgendaBispado role={user.role} />}
-          {activeTab === 'membros' && user.role === 'secretario' && <MembrosList />}
-          {activeTab === 'mensagens' && user.role === 'secretario' && <MensagensLideranca />}
+          {activeTab === 'dashboard'    && <Dashboard role={user.role} />}
+          {activeTab === 'entrevistas'  && <Entrevistas role={user.role} />}
+          {activeTab === 'agenda'       && <AgendaBispado role={user.role} lider={user.lider} />}
+          {activeTab === 'membros'      && user.role === 'secretario' && <MembrosList />}
+          {activeTab === 'mensagens'    && user.role === 'secretario' && <MensagensLideranca />}
         </div>
       </main>
     </div>
   );
 }
+
+// ─── Login ───────────────────────────────────────────────────────────────────
+const USERS = {
+  secretario:   { nome: 'Secretário',      role: 'secretario',   lider: null },
+  bispo:        { nome: 'Bispo',           role: 'bispado',      lider: 'Bispo' },
+  '1conselheiro': { nome: '1º Conselheiro', role: 'bispado',     lider: '1_conselheiro' },
+  '2conselheiro': { nome: '2º Conselheiro', role: 'bispado',     lider: '2_conselheiro' },
+};
+const SENHAS = {
+  secretario: 'ala123', bispo: 'bispo123', '1conselheiro': 'cons123', '2conselheiro': 'cons123'
+};
 
 function LoginScreen({ onLogin }) {
   const [usuario, setUsuario] = useState('');
@@ -64,14 +66,8 @@ function LoginScreen({ onLogin }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (usuario === 'secretario' && senha === 'ala123') {
-      onLogin({ nome: 'Secretário', role: 'secretario' });
-    } else if (usuario === 'bispo' && senha === 'bispo123') {
-      onLogin({ nome: 'Bispo', role: 'bispado' });
-    } else if (usuario === '1conselheiro' && senha === 'cons123') {
-      onLogin({ nome: '1º Conselheiro', role: 'bispado' });
-    } else if (usuario === '2conselheiro' && senha === 'cons123') {
-      onLogin({ nome: '2º Conselheiro', role: 'bispado' });
+    if (SENHAS[usuario] === senha) {
+      onLogin(USERS[usuario]);
     } else {
       setErro(true);
     }
@@ -80,49 +76,53 @@ function LoginScreen({ onLogin }) {
   return (
     <div className="login-container animate-fade-in">
       <div className="login-card glass-panel" style={{ textAlign: 'center' }}>
-        <h1 style={{fontSize: '3rem', margin: 0}}>⛪</h1>
-        <h2>Secretário IA da Ala</h2>
-        <p>Acesse seu painel administrativo</p>
-        
+        <div style={{ fontSize: '4rem', marginBottom: 8 }}>⛪</div>
+        <h2 style={{ margin: '0 0 4px' }}>Secretário IA da Ala</h2>
+        <p style={{ color: '#aaa', marginBottom: 24 }}>Acesse seu painel administrativo</p>
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="input-group">
             <label>Usuário</label>
-            <input type="text" placeholder="secretario ou bispo" value={usuario} onChange={(e) => setUsuario(e.target.value)} />
+            <input type="text" placeholder="secretario / bispo / 1conselheiro" value={usuario} onChange={e => { setUsuario(e.target.value); setErro(false); }} />
           </div>
           <div className="input-group">
             <label>Senha</label>
-            <input type="password" placeholder="Senha" value={senha} onChange={(e) => setSenha(e.target.value)} />
+            <input type="password" placeholder="Senha" value={senha} onChange={e => { setSenha(e.target.value); setErro(false); }} />
           </div>
-          {erro && <span className="error-message" style={{color: 'red'}}>Usuário ou senha incorretos.</span>}
-          <button type="submit" className="btn-login" style={{width: '100%', padding: 12, marginTop: 10, background: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: 8}}>Entrar no Painel</button>
+          {erro && <span style={{ color: '#ff6b6b', fontSize: '0.9rem' }}>Usuário ou senha incorretos.</span>}
+          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: 12 }}>Entrar no Painel</button>
         </form>
       </div>
     </div>
   );
 }
 
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
 function Sidebar({ activeTab, setActiveTab, role }) {
   const navs = role === 'secretario' ? [
-    { id: 'dashboard', label: 'Visão Geral', icon: '🏠' },
-    { id: 'entrevistas', label: 'Entrevistas', icon: '🗓️' },
-    { id: 'agenda', label: 'Agenda do Bispo', icon: '⌚' },
-    { id: 'membros', label: 'Membros & Recomendações', icon: '👥' },
-    { id: 'mensagens', label: 'Avisos da IA', icon: '🤖' }
+    { id: 'dashboard',   label: 'Visão Geral',          icon: '🏠' },
+    { id: 'entrevistas', label: 'Entrevistas',           icon: '🗓️' },
+    { id: 'agenda',      label: 'Agenda do Bispo',       icon: '⌚' },
+    { id: 'membros',     label: 'Membros & Recomend.',   icon: '👥' },
+    { id: 'mensagens',   label: 'Avisos da IA',          icon: '🤖' },
   ] : [
-    { id: 'dashboard', label: 'Meu Resumo', icon: '🏠' },
-    { id: 'entrevistas', label: 'Minhas Entrevistas', icon: '🗓️' },
-    { id: 'agenda', label: 'Definir Minha Agenda', icon: '⌚' }
+    { id: 'dashboard',   label: 'Meu Resumo',            icon: '🏠' },
+    { id: 'entrevistas', label: 'Minhas Entrevistas',    icon: '🗓️' },
+    { id: 'agenda',      label: 'Minha Disponibilidade', icon: '⌚' },
   ];
 
   return (
     <aside className="sidebar">
-      <div className="logo" style={{textAlign: 'center', marginBottom: 30}}>
-        <h1 style={{fontSize: '2rem', margin: 0}}>⛪</h1>
-        <h2 style={{fontSize: '1.2rem', color: 'white'}}>Secretário IA</h2>
+      <div style={{ textAlign: 'center', marginBottom: 30 }}>
+        <div style={{ fontSize: '2.5rem' }}>⛪</div>
+        <h2 style={{ fontSize: '1.1rem', color: 'white', margin: 0 }}>Secretário IA</h2>
       </div>
       <nav className="nav-menu">
         {navs.map(n => (
-          <button key={n.id} className={`nav-item ${activeTab === n.id ? 'active' : ''}`} onClick={() => setActiveTab(n.id)} style={{display: 'flex', gap: 10, alignItems: 'center', background: 'transparent', border: 'none', color: activeTab === n.id ? 'white' : '#aaa', width: '100%', padding: '12px 20px', cursor: 'pointer', textAlign: 'left', borderLeft: activeTab === n.id ? '3px solid var(--accent-primary)' : '3px solid transparent', backgroundColor: activeTab === n.id ? 'rgba(255,255,255,0.05)' : 'transparent'}}>
+          <button
+            key={n.id}
+            className={`nav-item ${activeTab === n.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(n.id)}
+          >
             <span>{n.icon}</span> {n.label}
           </button>
         ))}
@@ -131,27 +131,75 @@ function Sidebar({ activeTab, setActiveTab, role }) {
   );
 }
 
+// ─── Dashboard ───────────────────────────────────────────────────────────────
 function Dashboard({ role }) {
+  const [entrevistas, setEntrevistas] = useState([]);
+  const [membros, setMembros] = useState([]);
+  const [mensagens, setMensagens] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/secretario-listar-entrevistas'),
+      api.get('/secretario-listar-membros'),
+      role === 'secretario' ? api.get('/secretario-listar-mensagens') : Promise.resolve([])
+    ]).then(([e, m, msg]) => {
+      setEntrevistas(Array.isArray(e) ? e : []);
+      setMembros(Array.isArray(m) ? m : []);
+      setMensagens(Array.isArray(msg) ? msg : []);
+      setLoading(false);
+    });
+  }, [role]);
+
+  const hoje = new Date().toISOString().split('T')[0];
+  const entrevistasHoje = entrevistas.filter(e => e.data_agendamento && e.data_agendamento.startsWith(hoje));
+  const recVencendo = membros.filter(m => {
+    if (!m.recomendacao_vencimento) return false;
+    const diff = (new Date(m.recomendacao_vencimento) - new Date()) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 30;
+  });
+  const msgNaoLidas = mensagens.filter(m => !m.lida);
+
+  if (loading) return <LoadingSpinner />;
+
   return (
     <div className="animate-fade-in">
-      <div className="metrics-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 30 }}>
-        <MetricCard title="Entrevistas Hoje" value="2" icon="📋" color="var(--accent-primary)" />
-        {role === 'secretario' && <MetricCard title="Recomendações a Vencer (30d)" value="3" icon="⚠️" color="var(--warning)" />}
-        <MetricCard title="Avisos Não Lidos" value="1" icon="🔔" color="var(--success)" />
+      <div className="metrics-row">
+        <MetricCard title="Entrevistas Hoje" value={entrevistasHoje.length} icon="📋" color="var(--accent-primary)" />
+        {role === 'secretario' && <MetricCard title="Recomendações a Vencer (30d)" value={recVencendo.length} icon="⚠️" color="var(--warning)" />}
+        {role === 'secretario' && <MetricCard title="Avisos Não Lidos" value={msgNaoLidas.length} icon="🔔" color="var(--success)" />}
       </div>
-
-      <div className="main-panels" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        <div className="panel glass-panel" style={{padding: 20, borderRadius: 12}}>
+      <div className="main-panels">
+        <div className="panel glass-panel">
           <h2>🗓️ Próximas Entrevistas</h2>
-          <ul style={{listStyle: 'none', padding: 0}}>
-            {MOCK_ENTREVISTAS.map(e => (
-              <li key={e.id} style={{padding: 12, borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between'}}>
-                <div><strong>{e.membro}</strong><br/><small>{e.assunto}</small></div>
-                <div style={{textAlign: 'right'}}><strong>{e.data}</strong><br/><small>{e.hora}</small></div>
-              </li>
-            ))}
-          </ul>
+          {entrevistas.length === 0
+            ? <p style={{ color: '#aaa' }}>Nenhuma entrevista agendada.</p>
+            : <ul style={{ listStyle: 'none', padding: 0 }}>
+                {entrevistas.slice(0, 5).map(e => (
+                  <li key={e.id} style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between' }}>
+                    <div><strong>{e.membro_nome}</strong><br /><small style={{ color: '#aaa' }}>{e.assunto} — {e.lider}</small></div>
+                    <div style={{ textAlign: 'right' }}><strong>{e.data_agendamento?.split('T')[0]}</strong><br /><small>{String(e.hora_inicio).slice(0,5)}</small></div>
+                  </li>
+                ))}
+              </ul>
+          }
         </div>
+        {role === 'secretario' && (
+          <div className="panel glass-panel">
+            <h2>⚠️ Recomendações Vencendo</h2>
+            {recVencendo.length === 0
+              ? <p style={{ color: '#aaa' }}>Nenhuma recomendação vencendo em 30 dias.</p>
+              : <ul style={{ listStyle: 'none', padding: 0 }}>
+                  {recVencendo.map(m => (
+                    <li key={m.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div><strong>{m.nome}</strong><br /><small style={{ color: '#aaa' }}>{m.telefone}</small></div>
+                      <div style={{ textAlign: 'right' }}><span style={{ color: 'var(--warning)', fontSize: '0.85rem' }}>Vence: {m.recomendacao_vencimento?.split('T')[0]}</span></div>
+                    </li>
+                  ))}
+                </ul>
+            }
+          </div>
+        )}
       </div>
     </div>
   );
@@ -159,185 +207,438 @@ function Dashboard({ role }) {
 
 function MetricCard({ title, value, icon, color }) {
   return (
-    <div className="metric-card glass-panel" style={{padding: 20, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: `4px solid ${color}`}}>
+    <div className="metric-card glass-panel" style={{ borderLeft: `4px solid ${color}` }}>
       <div>
-        <h3 style={{margin: 0, fontSize: '0.9rem', color: '#aaa'}}>{title}</h3>
-        <div style={{fontSize: '2rem', fontWeight: 'bold'}}>{value}</div>
+        <h3 style={{ margin: 0, fontSize: '0.85rem', color: '#aaa', fontWeight: 400 }}>{title}</h3>
+        <div style={{ fontSize: '2.2rem', fontWeight: 'bold', marginTop: 4 }}>{value}</div>
       </div>
-      <div style={{fontSize: '2.5rem'}}>{icon}</div>
+      <div style={{ fontSize: '2.5rem' }}>{icon}</div>
     </div>
   );
 }
 
-function AgendaBispado({ role }) {
-  const [data, setData] = useState('');
-  const [inicio, setInicio] = useState('');
-  const [fim, setFim] = useState('');
-
-  const handleAdd = (e) => {
-    e.preventDefault();
-    alert('Funcionalidade de inserir no n8n será implementada em breve!');
-  };
-
-  return (
-    <div className="animate-fade-in glass-panel" style={{padding: 24, borderRadius: 12}}>
-      <h2>⌚ {role === 'bispado' ? 'Minha Disponibilidade (Bispo/Conselheiros)' : 'Agenda do Bispado'}</h2>
-      <p>Configure os dias e horários que você estará disponível na igreja para entrevistas. A IA usará isso para marcar horários com os membros que mandarem mensagem no WhatsApp.</p>
-      
-      {role === 'bispado' && (
-        <form onSubmit={handleAdd} style={{display: 'flex', gap: 15, marginBottom: 30, background: 'rgba(0,0,0,0.2)', padding: 15, borderRadius: 8}}>
-          <div style={{flex: 1}}><label>Data</label><input type="date" value={data} onChange={e=>setData(e.target.value)} required style={{width: '100%', padding: 8}}/></div>
-          <div style={{flex: 1}}><label>Início</label><input type="time" value={inicio} onChange={e=>setInicio(e.target.value)} required style={{width: '100%', padding: 8}}/></div>
-          <div style={{flex: 1}}><label>Fim</label><input type="time" value={fim} onChange={e=>setFim(e.target.value)} required style={{width: '100%', padding: 8}}/></div>
-          <div style={{display: 'flex', alignItems: 'flex-end'}}><button type="submit" style={{padding: '10px 20px', background: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer'}}>Salvar Horário</button></div>
-        </form>
-      )}
-
-      <h3>Horários Cadastrados</h3>
-      <table style={{width: '100%', textAlign: 'left', borderCollapse: 'collapse', marginTop: 15}}>
-        <thead>
-          <tr style={{borderBottom: '1px solid rgba(255,255,255,0.2)'}}>
-            <th style={{padding: 10}}>Líder</th>
-            <th style={{padding: 10}}>Data</th>
-            <th style={{padding: 10}}>Horário</th>
-          </tr>
-        </thead>
-        <tbody>
-          {MOCK_AGENDA_BISPADO.map(a => (
-            <tr key={a.id} style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
-              <td style={{padding: 10}}>{a.lider}</td>
-              <td style={{padding: 10}}>{a.data}</td>
-              <td style={{padding: 10}}>{a.inicio} as {a.fim}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
+// ─── Entrevistas ─────────────────────────────────────────────────────────────
 function Entrevistas({ role }) {
+  const [lista, setLista] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [data, setData] = useState('');
-  const [hora, setHora] = useState('');
-  const [membro, setMembro] = useState('');
-  const [lider, setLider] = useState('Bispo');
+  const [form, setForm] = useState({ membro_nome: '', lider: 'Bispo', data_agendamento: '', hora_inicio: '', hora_fim: '', assunto: '' });
+  const [salvando, setSalvando] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  const handleAdd = (e) => {
-    e.preventDefault();
-    alert('Agendamento salvo no banco de dados! (Em breve)');
-    setShowForm(false);
+  const carregar = useCallback(() => {
+    setLoading(true);
+    api.get('/secretario-listar-entrevistas').then(data => {
+      setLista(Array.isArray(data) ? data : []);
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const showToast = (msg, tipo = 'success') => {
+    setToast({ msg, tipo });
+    setTimeout(() => setToast(null), 3500);
   };
 
+  const handleSalvar = async (e) => {
+    e.preventDefault();
+    setSalvando(true);
+    const res = await api.post('/secretario-adicionar-entrevista', form);
+    setSalvando(false);
+    if (res && !res.error) {
+      showToast('Entrevista agendada com sucesso!');
+      setShowForm(false);
+      setForm({ membro_nome: '', lider: 'Bispo', data_agendamento: '', hora_inicio: '', hora_fim: '', assunto: '' });
+      carregar();
+    } else {
+      showToast('Erro ao salvar. Tente novamente.', 'error');
+    }
+  };
+
+  const handleStatus = async (id, status) => {
+    await api.post('/secretario-atualizar-entrevista', { id, status });
+    showToast(`Status atualizado para "${status}"`);
+    carregar();
+  };
+
+  const statusColor = { agendada: 'var(--accent-primary)', realizada: 'var(--success)', cancelada: '#ff6b6b' };
+
   return (
-    <div className="animate-fade-in glass-panel" style={{padding: 24, borderRadius: 12}}>
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-        <h2>🗓️ Controle de Entrevistas</h2>
-        <button onClick={() => setShowForm(!showForm)} style={{padding: '8px 15px', background: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer'}}>
-          + Novo Agendamento
-        </button>
+    <div className="animate-fade-in glass-panel" style={{ padding: 24, borderRadius: 12, position: 'relative' }}>
+      {toast && <Toast msg={toast.msg} tipo={toast.tipo} />}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>🗓️ Controle de Entrevistas</h2>
+        {role === 'secretario' && (
+          <button className="btn-primary" onClick={() => setShowForm(!showForm)}>
+            {showForm ? '✕ Cancelar' : '+ Novo Agendamento'}
+          </button>
+        )}
       </div>
-      <p>Lista de entrevistas agendadas pela IA ou manualmente pelo secretário.</p>
-      
+
       {showForm && (
-        <form onSubmit={handleAdd} style={{display: 'flex', gap: 15, marginBottom: 20, background: 'rgba(0,0,0,0.2)', padding: 15, borderRadius: 8, flexWrap: 'wrap'}}>
-          <div style={{flex: '1 1 200px'}}><label>Membro</label><input type="text" value={membro} onChange={e=>setMembro(e.target.value)} required style={{width: '100%', padding: 8}}/></div>
-          <div style={{flex: '1 1 150px'}}><label>Líder</label>
-            <select value={lider} onChange={e=>setLider(e.target.value)} style={{width: '100%', padding: 8}}>
+        <form onSubmit={handleSalvar} className="form-grid" style={{ marginBottom: 24 }}>
+          <div className="input-group"><label>Membro</label><input value={form.membro_nome} onChange={e => setForm({ ...form, membro_nome: e.target.value })} required placeholder="Nome do membro" /></div>
+          <div className="input-group"><label>Líder</label>
+            <select value={form.lider} onChange={e => setForm({ ...form, lider: e.target.value })}>
               <option value="Bispo">Bispo</option>
               <option value="1_conselheiro">1º Conselheiro</option>
               <option value="2_conselheiro">2º Conselheiro</option>
             </select>
           </div>
-          <div style={{flex: '1 1 150px'}}><label>Data</label><input type="date" value={data} onChange={e=>setData(e.target.value)} required style={{width: '100%', padding: 8}}/></div>
-          <div style={{flex: '1 1 100px'}}><label>Hora</label><input type="time" value={hora} onChange={e=>setHora(e.target.value)} required style={{width: '100%', padding: 8}}/></div>
-          <div style={{display: 'flex', alignItems: 'flex-end'}}><button type="submit" style={{padding: '10px 20px', background: 'var(--success)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer'}}>Salvar</button></div>
+          <div className="input-group"><label>Assunto</label><input value={form.assunto} onChange={e => setForm({ ...form, assunto: e.target.value })} placeholder="Ex: Renovação de Recomendação" /></div>
+          <div className="input-group"><label>Data</label><input type="date" value={form.data_agendamento} onChange={e => setForm({ ...form, data_agendamento: e.target.value })} required /></div>
+          <div className="input-group"><label>Início</label><input type="time" value={form.hora_inicio} onChange={e => setForm({ ...form, hora_inicio: e.target.value })} required /></div>
+          <div className="input-group"><label>Fim</label><input type="time" value={form.hora_fim} onChange={e => setForm({ ...form, hora_fim: e.target.value })} required /></div>
+          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="submit" className="btn-success" disabled={salvando}>{salvando ? 'Salvando...' : '✓ Salvar Agendamento'}</button>
+          </div>
         </form>
       )}
 
-      <table style={{width: '100%', textAlign: 'left', borderCollapse: 'collapse', marginTop: 15}}>
-        <thead>
-          <tr style={{borderBottom: '1px solid rgba(255,255,255,0.2)'}}>
-            <th style={{padding: 10}}>Membro</th>
-            <th style={{padding: 10}}>Assunto</th>
-            <th style={{padding: 10}}>Líder</th>
-            <th style={{padding: 10}}>Data/Hora</th>
-            <th style={{padding: 10}}>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {MOCK_ENTREVISTAS.map(e => (
-            <tr key={e.id} style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
-              <td style={{padding: 10}}><strong>{e.membro}</strong></td>
-              <td style={{padding: 10}}>{e.assunto}</td>
-              <td style={{padding: 10}}>Bispo</td>
-              <td style={{padding: 10}}>{e.data} às {e.hora}</td>
-              <td style={{padding: 10}}><span style={{background: 'var(--accent-primary)', padding: '4px 8px', borderRadius: 4, fontSize: '0.8rem'}}>{e.status}</span></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {loading ? <LoadingSpinner /> : lista.length === 0
+        ? <p style={{ color: '#aaa' }}>Nenhuma entrevista agendada.</p>
+        : (
+          <table className="data-table">
+            <thead><tr><th>Membro</th><th>Assunto</th><th>Líder</th><th>Data/Hora</th><th>Status</th>{role === 'secretario' && <th>Ações</th>}</tr></thead>
+            <tbody>
+              {lista.map(e => (
+                <tr key={e.id}>
+                  <td><strong>{e.membro_nome}</strong></td>
+                  <td>{e.assunto}</td>
+                  <td>{e.lider}</td>
+                  <td>{e.data_agendamento?.split('T')[0]} às {String(e.hora_inicio).slice(0,5)}</td>
+                  <td><span className="badge" style={{ background: statusColor[e.status] || '#555' }}>{e.status}</span></td>
+                  {role === 'secretario' && (
+                    <td style={{ display: 'flex', gap: 5 }}>
+                      <button className="btn-sm btn-success" onClick={() => handleStatus(e.id, 'realizada')}>✓</button>
+                      <button className="btn-sm btn-danger" onClick={() => handleStatus(e.id, 'cancelada')}>✕</button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      }
     </div>
   );
 }
 
+// ─── Agenda do Bispado ────────────────────────────────────────────────────────
+function AgendaBispado({ role, lider }) {
+  const [lista, setLista] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ lider: lider || 'Bispo', data_disponivel: '', hora_inicio: '', hora_fim: '' });
+  const [salvando, setSalvando] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const carregar = useCallback(() => {
+    api.get('/secretario-listar-agenda').then(data => {
+      setLista(Array.isArray(data) ? data : []);
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const showToast = (msg, tipo = 'success') => {
+    setToast({ msg, tipo });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleSalvar = async (e) => {
+    e.preventDefault();
+    setSalvando(true);
+    await api.post('/secretario-adicionar-agenda', form);
+    setSalvando(false);
+    showToast('Horário salvo na agenda!');
+    carregar();
+  };
+
+  const handleRemover = async (id) => {
+    await api.post('/secretario-remover-agenda', { id });
+    showToast('Horário removido.');
+    carregar();
+  };
+
+  const liderLabel = { Bispo: 'Bispo', '1_conselheiro': '1º Conselheiro', '2_conselheiro': '2º Conselheiro' };
+
+  return (
+    <div className="animate-fade-in glass-panel" style={{ padding: 24, borderRadius: 12, position: 'relative' }}>
+      {toast && <Toast msg={toast.msg} tipo={toast.tipo} />}
+      <h2>⌚ {role === 'bispado' ? 'Minha Disponibilidade' : 'Agenda do Bispado'}</h2>
+      <p style={{ color: '#aaa', marginBottom: 20 }}>
+        {role === 'bispado'
+          ? 'Configure os dias e horários em que você estará disponível. A IA usará esses horários para marcar entrevistas automaticamente.'
+          : 'Visualize e gerencie todos os horários disponíveis do Bispado para entrevistas.'}
+      </p>
+
+      <form onSubmit={handleSalvar} className="form-grid" style={{ marginBottom: 24 }}>
+        {role === 'secretario' && (
+          <div className="input-group"><label>Líder</label>
+            <select value={form.lider} onChange={e => setForm({ ...form, lider: e.target.value })}>
+              <option value="Bispo">Bispo</option>
+              <option value="1_conselheiro">1º Conselheiro</option>
+              <option value="2_conselheiro">2º Conselheiro</option>
+            </select>
+          </div>
+        )}
+        <div className="input-group"><label>Data</label><input type="date" value={form.data_disponivel} onChange={e => setForm({ ...form, data_disponivel: e.target.value })} required /></div>
+        <div className="input-group"><label>Início</label><input type="time" value={form.hora_inicio} onChange={e => setForm({ ...form, hora_inicio: e.target.value })} required /></div>
+        <div className="input-group"><label>Fim</label><input type="time" value={form.hora_fim} onChange={e => setForm({ ...form, hora_fim: e.target.value })} required /></div>
+        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+          <button type="submit" className="btn-primary" disabled={salvando}>{salvando ? 'Salvando...' : '+ Adicionar Horário'}</button>
+        </div>
+      </form>
+
+      <h3>Horários Cadastrados</h3>
+      {loading ? <LoadingSpinner /> : lista.length === 0
+        ? <p style={{ color: '#aaa' }}>Nenhum horário cadastrado ainda.</p>
+        : (
+          <table className="data-table">
+            <thead><tr><th>Líder</th><th>Data</th><th>Horário</th><th>Status</th><th>Ação</th></tr></thead>
+            <tbody>
+              {lista.map(a => (
+                <tr key={a.id}>
+                  <td>{liderLabel[a.lider] || a.lider}</td>
+                  <td>{a.data_disponivel?.split('T')[0]}</td>
+                  <td>{String(a.hora_inicio).slice(0,5)} às {String(a.hora_fim).slice(0,5)}</td>
+                  <td><span className="badge" style={{ background: a.disponivel ? 'var(--success)' : '#555' }}>{a.disponivel ? 'Disponível' : 'Ocupado'}</span></td>
+                  <td><button className="btn-sm btn-danger" onClick={() => handleRemover(a.id)}>Remover</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      }
+    </div>
+  );
+}
+
+// ─── Membros ──────────────────────────────────────────────────────────────────
 function MembrosList() {
-  const dispararMensagem = (membroNome) => {
-    alert(`Mensagem enviada para ${membroNome}!\n\n"Cuidado, recomendação vencendo... Precisamos agendar entrevista e estar prontos para poder entrar na casa do nosso Pai. Não vai ser igual as 5 virgens imprudentes..."`);
+  const [lista, setLista] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editando, setEditando] = useState(null);
+  const [form, setForm] = useState({ nome: '', telefone: '', endereco: '', recomendacao_vencimento: '', status: 'ativo' });
+  const [salvando, setSalvando] = useState(false);
+  const [enviando, setEnviando] = useState({});
+  const [toast, setToast] = useState(null);
+
+  const carregar = useCallback(() => {
+    api.get('/secretario-listar-membros').then(data => {
+      setLista(Array.isArray(data) ? data : []);
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const showToast = (msg, tipo = 'success') => {
+    setToast({ msg, tipo });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleSalvar = async (e) => {
+    e.preventDefault();
+    setSalvando(true);
+    if (editando) {
+      await api.post('/secretario-editar-membro', { ...form, id: editando });
+      showToast('Membro atualizado!');
+    } else {
+      await api.post('/secretario-adicionar-membro', form);
+      showToast('Membro adicionado com sucesso!');
+    }
+    setSalvando(false);
+    setShowForm(false);
+    setEditando(null);
+    setForm({ nome: '', telefone: '', endereco: '', recomendacao_vencimento: '', status: 'ativo' });
+    carregar();
+  };
+
+  const handleEditar = (m) => {
+    setEditando(m.id);
+    setForm({
+      nome: m.nome,
+      telefone: m.telefone || '',
+      endereco: m.endereco || '',
+      recomendacao_vencimento: m.recomendacao_vencimento?.split('T')[0] || '',
+      status: m.status || 'ativo'
+    });
+    setShowForm(true);
+  };
+
+  const handleAvisarZap = async (membro) => {
+    setEnviando(prev => ({ ...prev, [membro.id]: true }));
+    const res = await api.post('/secretario-alerta-recomendacao', {
+      membro_id: membro.id,
+      nome: membro.nome,
+      telefone: membro.telefone,
+      vencimento: membro.recomendacao_vencimento?.split('T')[0]
+    });
+    setEnviando(prev => ({ ...prev, [membro.id]: false }));
+    if (res && !res.error) {
+      showToast(`✅ Mensagem enviada para ${membro.nome} no WhatsApp!`);
+    } else {
+      showToast('Erro ao enviar. Verifique a Z-API.', 'error');
+    }
+  };
+
+  const diasParaVencer = (data) => {
+    if (!data) return 999;
+    return Math.ceil((new Date(data) - new Date()) / (1000 * 60 * 60 * 24));
   };
 
   return (
-    <div className="animate-fade-in glass-panel" style={{padding: 24, borderRadius: 12}}>
-      <h2>👥 Membros & Recomendações</h2>
-      <p>O robô monitora essa tabela e enviará um WhatsApp para quem tiver a recomendação vencendo em 30 dias.</p>
-      
-      <div style={{display: 'flex', gap: 10, marginBottom: 15}}>
-        <button style={{padding: '8px 15px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 6, cursor: 'pointer'}}>
-          + Adicionar Membro Manualmente
+    <div className="animate-fade-in glass-panel" style={{ padding: 24, borderRadius: 12, position: 'relative' }}>
+      {toast && <Toast msg={toast.msg} tipo={toast.tipo} />}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>👥 Membros & Recomendações</h2>
+        <button className="btn-primary" onClick={() => { setShowForm(!showForm); setEditando(null); setForm({ nome: '', telefone: '', endereco: '', recomendacao_vencimento: '', status: 'ativo' }); }}>
+          {showForm ? '✕ Cancelar' : '+ Adicionar Membro'}
         </button>
       </div>
+      <p style={{ color: '#aaa', marginBottom: 16 }}>O robô monitora recomendações vencendo em 30 dias e você pode avisar pelo WhatsApp com um clique.</p>
 
-      <table style={{width: '100%', textAlign: 'left', borderCollapse: 'collapse', marginTop: 15}}>
-        <thead>
-          <tr style={{borderBottom: '1px solid rgba(255,255,255,0.2)'}}>
-            <th style={{padding: 10}}>Membro</th>
-            <th style={{padding: 10}}>WhatsApp</th>
-            <th style={{padding: 10}}>Vencimento Rec.</th>
-            <th style={{padding: 10}}>Ações Manuais</th>
-          </tr>
-        </thead>
-        <tbody>
-          {MOCK_MEMBROS.map(m => (
-            <tr key={m.id} style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
-              <td style={{padding: 10}}><strong>{m.nome}</strong></td>
-              <td style={{padding: 10}}>{m.telefone}</td>
-              <td style={{padding: 10, color: m.recomendacao.includes('2026-06') ? 'var(--warning)' : 'white'}}>{m.recomendacao}</td>
-              <td style={{padding: 10, display: 'flex', gap: 5}}>
-                <button style={{padding: '5px 10px', background: 'transparent', color: '#aaa', border: '1px solid #555', borderRadius: 4, cursor: 'pointer'}}>Editar</button>
-                {m.recomendacao.includes('2026-06') && (
-                  <button onClick={() => dispararMensagem(m.nome)} style={{padding: '5px 10px', background: '#25D366', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer'}}>
-                    Avisar no Zap
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {showForm && (
+        <form onSubmit={handleSalvar} className="form-grid" style={{ marginBottom: 24 }}>
+          <div className="input-group"><label>Nome</label><input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} required placeholder="Nome completo" /></div>
+          <div className="input-group"><label>WhatsApp</label><input value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} placeholder="5511999999999" /></div>
+          <div className="input-group"><label>Endereço</label><input value={form.endereco} onChange={e => setForm({ ...form, endereco: e.target.value })} placeholder="Rua, número, bairro" /></div>
+          <div className="input-group"><label>Vencimento Recomendação</label><input type="date" value={form.recomendacao_vencimento} onChange={e => setForm({ ...form, recomendacao_vencimento: e.target.value })} /></div>
+          <div className="input-group"><label>Status</label>
+            <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+              <option value="ativo">Ativo</option>
+              <option value="mudou">Mudou</option>
+              <option value="faleceu">Faleceu</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button type="submit" className="btn-success" disabled={salvando}>{salvando ? 'Salvando...' : editando ? '✓ Atualizar' : '✓ Salvar Membro'}</button>
+          </div>
+        </form>
+      )}
+
+      {loading ? <LoadingSpinner /> : lista.length === 0
+        ? <p style={{ color: '#aaa' }}>Nenhum membro cadastrado.</p>
+        : (
+          <table className="data-table">
+            <thead><tr><th>Membro</th><th>WhatsApp</th><th>Vencimento Rec.</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody>
+              {lista.map(m => {
+                const dias = diasParaVencer(m.recomendacao_vencimento);
+                const urgente = dias >= 0 && dias <= 30;
+                const vencida = dias < 0;
+                return (
+                  <tr key={m.id}>
+                    <td><strong>{m.nome}</strong></td>
+                    <td>{m.telefone}</td>
+                    <td style={{ color: vencida ? '#ff6b6b' : urgente ? 'var(--warning)' : 'inherit' }}>
+                      {m.recomendacao_vencimento?.split('T')[0] || '—'}
+                      {urgente && <span style={{ marginLeft: 8, fontSize: '0.75rem', background: 'var(--warning)', color: '#000', padding: '2px 6px', borderRadius: 4 }}>{dias}d</span>}
+                      {vencida && <span style={{ marginLeft: 8, fontSize: '0.75rem', background: '#ff6b6b', color: '#fff', padding: '2px 6px', borderRadius: 4 }}>Vencida</span>}
+                    </td>
+                    <td><span className="badge" style={{ background: m.status === 'ativo' ? 'var(--success)' : '#555' }}>{m.status}</span></td>
+                    <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button className="btn-sm" onClick={() => handleEditar(m)}>✏️ Editar</button>
+                      {(urgente || vencida) && (
+                        <button
+                          className="btn-sm btn-zap"
+                          disabled={enviando[m.id]}
+                          onClick={() => handleAvisarZap(m)}
+                        >
+                          {enviando[m.id] ? '⏳...' : '📱 Avisar Zap'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )
+      }
     </div>
   );
 }
 
+// ─── Mensagens da IA ──────────────────────────────────────────────────────────
 function MensagensLideranca() {
+  const [lista, setLista] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  const carregar = useCallback(() => {
+    api.get('/secretario-listar-mensagens').then(data => {
+      setLista(Array.isArray(data) ? data : []);
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const showToast = (msg) => { setToast({ msg }); setTimeout(() => setToast(null), 3000); };
+
+  const handleMarcarLida = async (id) => {
+    await api.post('/secretario-marcar-mensagem-lida', { id });
+    showToast('Marcado como atualizado!');
+    carregar();
+  };
+
   return (
-    <div className="animate-fade-in glass-panel" style={{padding: 24, borderRadius: 12}}>
+    <div className="animate-fade-in glass-panel" style={{ padding: 24, borderRadius: 12, position: 'relative' }}>
+      {toast && <Toast msg={toast.msg} />}
       <h2>🤖 Avisos da IA</h2>
-      <p>Mensagens, recados e mudanças de endereço captadas pela IA no WhatsApp ("peixe na água").</p>
-      <div style={{background: 'rgba(0,0,0,0.2)', padding: 15, borderRadius: 8, marginBottom: 10, borderLeft: '4px solid var(--warning)'}}>
-        <strong>De: João Santos</strong>
-        <p>"Oi, mudei de casa. Meu novo endereço é Rua Nova, 123."</p>
-        <button style={{background: 'var(--success)', border: 'none', color: 'white', padding: '5px 10px', borderRadius: 4, cursor: 'pointer'}}>Marcar como Atualizado no LCR</button>
-      </div>
+      <p style={{ color: '#aaa', marginBottom: 20 }}>Mensagens e recados captados pela IA no WhatsApp que precisam de atenção do Secretário.</p>
+      {loading ? <LoadingSpinner /> : lista.length === 0
+        ? <p style={{ color: '#aaa' }}>Nenhum aviso pendente. Tudo em ordem! ✅</p>
+        : lista.map(m => (
+          <div key={m.id} style={{
+            background: 'rgba(0,0,0,0.2)',
+            padding: 16,
+            borderRadius: 8,
+            marginBottom: 12,
+            borderLeft: `4px solid ${m.lida ? '#555' : 'var(--warning)'}`
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <strong>{m.remetente_nome}</strong>
+              <small style={{ color: '#aaa' }}>{m.criado_em?.split('T')[0]}</small>
+            </div>
+            <p style={{ margin: '0 0 10px', color: '#ddd' }}>"{m.mensagem}"</p>
+            {!m.lida && (
+              <button className="btn-success" style={{ fontSize: '0.85rem', padding: '6px 14px' }} onClick={() => handleMarcarLida(m.id)}>
+                ✓ Marcar como Atualizado no LCR
+              </button>
+            )}
+            {m.lida && <span style={{ fontSize: '0.8rem', color: '#777' }}>✓ Atualizado</span>}
+          </div>
+        ))
+      }
+    </div>
+  );
+}
+
+// ─── Componentes Auxiliares ──────────────────────────────────────────────────
+function LoadingSpinner() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+      <div style={{ width: 36, height: 36, border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid var(--accent-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    </div>
+  );
+}
+
+function Toast({ msg, tipo = 'success' }) {
+  const bg = tipo === 'error' ? '#ff6b6b' : tipo === 'success' ? 'var(--success)' : 'var(--accent-primary)';
+  return (
+    <div style={{
+      position: 'fixed', top: 24, right: 24, zIndex: 9999,
+      background: bg, color: 'white', padding: '12px 20px',
+      borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+      animation: 'slideIn 0.3s ease', maxWidth: 350
+    }}>
+      {msg}
     </div>
   );
 }

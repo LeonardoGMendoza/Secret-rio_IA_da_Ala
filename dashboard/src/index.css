@@ -418,6 +418,142 @@ button {
   margin-top: -8px;
 }
 
+/* ─── Botões ──────────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--accent-primary);
+  color: white;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btn-success {
+  background: var(--success);
+  color: white;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+.btn-success:hover:not(:disabled) { background: #059669; transform: translateY(-1px); }
+.btn-success:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btn-danger {
+  background: rgba(239,68,68,0.15);
+  color: #ff6b6b;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+.btn-danger:hover { background: rgba(239,68,68,0.3); }
+
+.btn-zap {
+  background: #25D366;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-zap:hover:not(:disabled) { background: #1da851; transform: translateY(-1px); }
+.btn-zap:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.07);
+  color: #ccc;
+  border: 1px solid rgba(255,255,255,0.12);
+  transition: all 0.2s;
+}
+.btn-sm:hover { background: rgba(255,255,255,0.14); color: white; }
+
+/* ─── Formulário Grid ─────────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  background: rgba(0,0,0,0.2);
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.input-group select {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border-color);
+  color: white;
+  font-family: inherit;
+  font-size: 1rem;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+  appearance: none;
+  cursor: pointer;
+}
+.input-group select:focus { border-color: var(--accent-primary); }
+.input-group select option { background: var(--bg-secondary); }
+
+.input-group input[type="date"],
+.input-group input[type="time"] {
+  color-scheme: dark;
+}
+
+/* ─── Tabelas ─────────────────────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+.data-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+.data-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+/* ─── Badge ────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: white;
+}
+
+/* ─── Animações ────────────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 /* --- Responsividade (Mobile) --- */
 @media (max-width: 768px) {
   .app-container {

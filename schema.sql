@@ -36,15 +36,39 @@ CREATE TABLE IF NOT EXISTS mensagens_lideranca (
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Inserindo alguns dados de teste (Serão apagados depois quando subir o Excel oficial)
+-- Tabela de Disponibilidade da Agenda do Bispado (preenchida pelo Bispo/Conselheiros)
+CREATE TABLE IF NOT EXISTS agenda_bispado (
+    id SERIAL PRIMARY KEY,
+    lider VARCHAR(50) NOT NULL, -- Bispo, 1_conselheiro, 2_conselheiro
+    data_disponivel DATE NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fim TIME NOT NULL,
+    disponivel BOOLEAN DEFAULT TRUE,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Inserindo alguns dados de teste para membros
 INSERT INTO membros (nome, telefone, endereco, recomendacao_vencimento, status) VALUES
 ('João Santos', '5511999991111', 'Rua das Flores, 123', CURRENT_DATE + INTERVAL '15 days', 'ativo'),
 ('Maria Silva', '5511988882222', 'Av Principal, 456', CURRENT_DATE + INTERVAL '2 months', 'ativo'),
-('Pedro Oliveira', '5511977773333', 'Rua Alegre, 789', CURRENT_DATE - INTERVAL '5 days', 'ativo');
+('Pedro Oliveira', '5511977773333', 'Rua Alegre, 789', CURRENT_DATE - INTERVAL '5 days', 'ativo')
+ON CONFLICT DO NOTHING;
 
+-- Inserindo entrevistas de teste
 INSERT INTO entrevistas (membro_nome, data_agendamento, hora_inicio, hora_fim, lider, assunto) VALUES
 ('João Santos', CURRENT_DATE + INTERVAL '1 day', '19:00', '19:30', 'Bispo', 'Renovação de Recomendação'),
-('Maria Silva', CURRENT_DATE + INTERVAL '2 days', '20:00', '21:00', '1_conselheiro', 'Aconselhamento');
+('Maria Silva', CURRENT_DATE + INTERVAL '2 days', '20:00', '21:00', '1_conselheiro', 'Aconselhamento')
+ON CONFLICT DO NOTHING;
 
+-- Inserindo recado de teste
 INSERT INTO mensagens_lideranca (remetente_nome, telefone, mensagem, lider_destino) VALUES
-('Pedro Oliveira', '5511977773333', 'Irmão, me mudei para a cidade vizinha, preciso transferir meus registros.', 'Secretário');
+('Pedro Oliveira', '5511977773333', 'Irmão, me mudei para a cidade vizinha, preciso transferir meus registros.', 'Secretário')
+ON CONFLICT DO NOTHING;
+
+-- Inserindo horários disponíveis de teste na agenda do bispado
+INSERT INTO agenda_bispado (lider, data_disponivel, hora_inicio, hora_fim) VALUES
+('Bispo', CURRENT_DATE + INTERVAL '3 days', '19:00', '21:00'),
+('Bispo', CURRENT_DATE + INTERVAL '7 days', '19:00', '21:00'),
+('1_conselheiro', CURRENT_DATE + INTERVAL '4 days', '18:00', '20:00'),
+('2_conselheiro', CURRENT_DATE + INTERVAL '5 days', '18:00', '20:00')
+ON CONFLICT DO NOTHING;

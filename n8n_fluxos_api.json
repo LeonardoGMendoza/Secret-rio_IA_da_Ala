@@ -1,0 +1,358 @@
+[
+  {
+    "name": "Secretario-API-Listar-Entrevistas",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "GET", "path": "secretario-listar-entrevistas", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "aa001", "name": "Webhook", "webhookId": "sec-list-ent"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, membro_nome, assunto, lider, data_agendamento::text, hora_inicio::text, hora_fim::text, status, criado_em::text FROM entrevistas ORDER BY data_agendamento ASC, hora_inicio ASC;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "aa002", "name": "Listar Entrevistas",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "aa003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Listar Entrevistas", "type": "main", "index": 0 }]] },
+      "Listar Entrevistas": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Adicionar-Entrevista",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "secretario-adicionar-entrevista", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "bb001", "name": "Webhook", "webhookId": "sec-add-ent"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO entrevistas (membro_nome, lider, data_agendamento, hora_inicio, hora_fim, assunto, status) VALUES ('{{ $json.body.membro_nome }}', '{{ $json.body.lider }}', '{{ $json.body.data_agendamento }}', '{{ $json.body.hora_inicio }}', '{{ $json.body.hora_fim }}', '{{ $json.body.assunto }}', 'agendada') RETURNING id;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "bb002", "name": "Inserir Entrevista",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "bb003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Inserir Entrevista", "type": "main", "index": 0 }]] },
+      "Inserir Entrevista": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Atualizar-Entrevista",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "secretario-atualizar-entrevista", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "cc001", "name": "Webhook", "webhookId": "sec-upd-ent"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE entrevistas SET status = '{{ $json.body.status }}' WHERE id = {{ $json.body.id }} RETURNING id, status;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "cc002", "name": "Atualizar Status",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "cc003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Atualizar Status", "type": "main", "index": 0 }]] },
+      "Atualizar Status": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Listar-Membros",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "GET", "path": "secretario-listar-membros", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "dd001", "name": "Webhook", "webhookId": "sec-list-mem"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, nome, telefone, endereco, recomendacao_vencimento::text, status FROM membros WHERE status != 'faleceu' ORDER BY nome ASC;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "dd002", "name": "Listar Membros",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "dd003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Listar Membros", "type": "main", "index": 0 }]] },
+      "Listar Membros": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Adicionar-Membro",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "secretario-adicionar-membro", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "ee001", "name": "Webhook", "webhookId": "sec-add-mem"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO membros (nome, telefone, endereco, recomendacao_vencimento, status) VALUES ('{{ $json.body.nome }}', '{{ $json.body.telefone }}', '{{ $json.body.endereco }}', NULLIF('{{ $json.body.recomendacao_vencimento }}', ''), '{{ $json.body.status }}') RETURNING id;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "ee002", "name": "Inserir Membro",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "ee003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Inserir Membro", "type": "main", "index": 0 }]] },
+      "Inserir Membro": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Editar-Membro",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "secretario-editar-membro", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "ff001", "name": "Webhook", "webhookId": "sec-edit-mem"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE membros SET nome='{{ $json.body.nome }}', telefone='{{ $json.body.telefone }}', endereco='{{ $json.body.endereco }}', recomendacao_vencimento=NULLIF('{{ $json.body.recomendacao_vencimento }}',''), status='{{ $json.body.status }}' WHERE id={{ $json.body.id }} RETURNING id;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "ff002", "name": "Editar Membro",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "ff003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Editar Membro", "type": "main", "index": 0 }]] },
+      "Editar Membro": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Alerta-Recomendacao",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "secretario-alerta-recomendacao", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "gg001", "name": "Webhook", "webhookId": "sec-alerta-rec"
+      },
+      {
+        "parameters": {
+          "url": "https://api.z-api.io/instances/3F2F61CB306150004741423ED5B98F9F/token/D00FB2CBCEC59D1A1DFF3037/send-text",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              { "name": "Client-Token", "value": "Fc371b3a898d5425585d9e77e49e044eaS" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"phone\": \"{{ $json.body.telefone }}\",\n  \"message\": \"Irmão(ã) *{{ $json.body.nome }}*, tudo bem? 🙏\\n\\nSou o Secretário IA da nossa Ala. Passando para lembrar que a sua *Recomendação ao Templo vence em {{ $json.body.vencimento }}*.\\n\\nPara renová-la, você precisará de uma entrevista com o Bispo. Que tal já marcarmos? Basta me responder aqui no WhatsApp com *'quero agendar'* e eu te ajudo! 😊\\n\\n_'Sede vigilantes...' — Não seja como as 5 virgens imprudentes (Mateus 25)_\",\n  \"delay\": 1200\n}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [50, 300],
+        "id": "gg002", "name": "Enviar Alerta WhatsApp"
+      },
+      {
+        "parameters": { "respondWith": "json", "responseBody": "={\"success\": true, \"enviado_para\": \"{{ $('Webhook').item.json.body.nome }}\"}", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "gg003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Enviar Alerta WhatsApp", "type": "main", "index": 0 }]] },
+      "Enviar Alerta WhatsApp": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Agenda-Bispado",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "GET", "path": "secretario-listar-agenda", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "hh001", "name": "Webhook", "webhookId": "sec-list-agenda"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, lider, data_disponivel::text, hora_inicio::text, hora_fim::text, disponivel FROM agenda_bispado WHERE data_disponivel >= CURRENT_DATE ORDER BY data_disponivel ASC, hora_inicio ASC;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "hh002", "name": "Listar Agenda",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "hh003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Listar Agenda", "type": "main", "index": 0 }]] },
+      "Listar Agenda": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Adicionar-Agenda",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "secretario-adicionar-agenda", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "ii001", "name": "Webhook", "webhookId": "sec-add-agenda"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO agenda_bispado (lider, data_disponivel, hora_inicio, hora_fim) VALUES ('{{ $json.body.lider }}', '{{ $json.body.data_disponivel }}', '{{ $json.body.hora_inicio }}', '{{ $json.body.hora_fim }}') RETURNING id;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "ii002", "name": "Inserir Agenda",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "ii003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Inserir Agenda", "type": "main", "index": 0 }]] },
+      "Inserir Agenda": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Remover-Agenda",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "secretario-remover-agenda", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "jj001", "name": "Webhook", "webhookId": "sec-rem-agenda"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "DELETE FROM agenda_bispado WHERE id = {{ $json.body.id }} RETURNING id;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "jj002", "name": "Remover Agenda",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "jj003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Remover Agenda", "type": "main", "index": 0 }]] },
+      "Remover Agenda": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Listar-Mensagens",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "GET", "path": "secretario-listar-mensagens", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "kk001", "name": "Webhook", "webhookId": "sec-list-msg"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, remetente_nome, telefone, mensagem, lider_destino, lida, criado_em::text FROM mensagens_lideranca ORDER BY lida ASC, criado_em DESC;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "kk002", "name": "Listar Mensagens",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "kk003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Listar Mensagens", "type": "main", "index": 0 }]] },
+      "Listar Mensagens": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  },
+  {
+    "name": "Secretario-API-Marcar-Mensagem-Lida",
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "secretario-marcar-mensagem-lida", "options": { "allowedOrigins": "*" } },
+        "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [-200, 300],
+        "id": "ll001", "name": "Webhook", "webhookId": "sec-msg-lida"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE mensagens_lideranca SET lida = TRUE WHERE id = {{ $json.body.id }} RETURNING id;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres", "typeVersion": 2.6, "position": [50, 300],
+        "id": "ll002", "name": "Marcar Lida",
+        "credentials": { "postgres": { "id": "3", "name": "Postgres account 3" } }
+      },
+      {
+        "parameters": { "respondWith": "allIncomingItems", "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } } },
+        "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.4, "position": [300, 300],
+        "id": "ll003", "name": "Responder"
+      }
+    ],
+    "connections": {
+      "Webhook": { "main": [[{ "node": "Marcar Lida", "type": "main", "index": 0 }]] },
+      "Marcar Lida": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+    }
+  }
+]
